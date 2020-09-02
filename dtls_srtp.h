@@ -272,6 +272,21 @@ typedef struct srtp_key_ptrs {
     const uint8_t *remotesalt;
 } srtp_key_ptrs;
 
+typedef struct srtp_protection_profile {
+    const char *name;
+    unsigned long id;
+} srtp_protection_profile;
+
+/*
+ * get selected srtp profile
+ */
+static inline srtp_protection_profile *srtp_get_selected_srtp_profile(dtls_sess *sess)
+{
+    SRTP_PROTECTION_PROFILE *profile = SSL_get_selected_srtp_profile(sess->ssl);
+    return (srtp_protection_profile *)profile;
+}
+
+
 /*
  * Extract raw srtp key material from a dtls_sess object. Use
  * key_material_free to free it.

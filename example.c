@@ -309,6 +309,15 @@ int mainloop(fd_t fd, SSL_CTX *cfg, const struct timeval *timeout,
                     break;
                 }
                 if (dtls->type == DTLS_CONTYPE_EXISTING) {
+                    // dump selected srtp protection profile
+                    srtp_protection_profile *profile = srtp_get_selected_srtp_profile(dtls);
+                    if (!profile) {
+                        fprintf(stderr, "can not get srtp selected profile.......");
+                    }
+                    else {
+                        fprintf(stderr, "srtp selected protection profile, name:%s, id:%ld\n", profile->name, profile->id);
+                    }
+
                     // SSL_is_init_finished(), print key material.
                     {
                         X509 *peercert = dtls_sess_get_peer_certificate(dtls);
