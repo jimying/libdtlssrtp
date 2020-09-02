@@ -22,6 +22,11 @@ SSL_VERIFY_CB(dtls_trivial_verify_callback)
     // TODO: add actuall verify routines here, if needed.
     (void)preverify_ok;
     (void)ctx;
+    int err = X509_STORE_CTX_get_error(ctx);
+    if (X509_V_OK != err) {
+        fprintf(stderr, "## verifiy fail....err:%d, %s\n", err, X509_verify_cert_error_string(err));
+    }
+
     return 1;
 }
 
