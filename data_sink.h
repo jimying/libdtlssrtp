@@ -18,7 +18,7 @@
 #ifndef _DATA_SINK_H_
 #define _DATA_SINK_H_
 /*
- * An abstract interface to adapt mechanisms able to send packet, 
+ * An abstract interface to adapt mechanisms able to send packet,
  * with an optional ability to trigger timeout.
  */
 #include <stddef.h>
@@ -27,56 +27,49 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-  
-  /*
-   * A function prototype to send packet, modeled with sendto(2),
-   * used to send a packet pointed by 'data', with length 'datalen',
-   * to an address opject pointed by 'target', with length 'tglen',
-   * via an media object pointed by 'carrier'. If address information
-   * is already contained within the *carrier, 'target' and 'tglen' 
-   * could be zero and ignored by the implementation of the real send
-   * function wrapped with callbacks fit to the prototype.
-   */
-#define DSINK_SENDTO(x)				\
-  ptrdiff_t (x)					\
-  (void* carrier,				\
-   const void* data,				\
-   size_t datalen,				\
-   int flags,					\
-   const void* target,				\
-   int tglen)					\
+
+/*
+ * A function prototype to send packet, modeled with sendto(2),
+ * used to send a packet pointed by 'data', with length 'datalen',
+ * to an address opject pointed by 'target', with length 'tglen',
+ * via an media object pointed by 'carrier'. If address information
+ * is already contained within the *carrier, 'target' and 'tglen'
+ * could be zero and ignored by the implementation of the real send
+ * function wrapped with callbacks fit to the prototype.
+ */
+#define DSINK_SENDTO(x)                                                        \
+    ptrdiff_t(x)(void *carrier, const void *data, size_t datalen, int flags,   \
+                 const void *target, int tglen)
 
 typedef DSINK_SENDTO(dsink_sendto);
 
-  /*
-   * Used to schedule timeout handling,
-   * timer functionality is supposed to
-   * implemented optionally within *carrier, 
-   * with scheduling state stored, tv could
-   * be NULL to indicate NO new timeout 
-   * handling is scheduled.
-   */ 
-#define DSINK_TIMER_SCHED(x)			\
-  void (x)(void* carrier,			\
-	  const struct timeval* tv)		\
+/*
+ * Used to schedule timeout handling,
+ * timer functionality is supposed to
+ * implemented optionally within *carrier,
+ * with scheduling state stored, tv could
+ * be NULL to indicate NO new timeout
+ * handling is scheduled.
+ */
+#define DSINK_TIMER_SCHED(x) void(x)(void *carrier, const struct timeval *tv)
 
 typedef DSINK_TIMER_SCHED(dsink_timer_sched);
-  
-  /*
-   * Global virtual table structure to represent a specific type of 
-   * data sink. A valid data sink is supposed to implement 'sendto',
-   * while sched is optional (non-zero), but usually need to be 
-   * implemented to perform robust dtls handshake. Unused member must
-   * be assigned to zero (NULL) value.
-   */
-typedef struct dsink{
-  const char* name;
-  dsink_sendto* sendto;
-  dsink_timer_sched* sched;
-}dsink;
+
+/*
+ * Global virtual table structure to represent a specific type of
+ * data sink. A valid data sink is supposed to implement 'sendto',
+ * while sched is optional (non-zero), but usually need to be
+ * implemented to perform robust dtls handshake. Unused member must
+ * be assigned to zero (NULL) value.
+ */
+typedef struct dsink {
+    const char *name;
+    dsink_sendto *sendto;
+    dsink_timer_sched *sched;
+} dsink;
 
 #ifdef __cplusplus
 }
 #endif
-       
+
 #endif

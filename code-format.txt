@@ -1,0 +1,4 @@
+use clang-format tools, command line:
+
+clang-format -style="{BasedOnStyle: llvm, IndentWidth: 4, TabWidth: 4,BreakBeforeBraces: Stroustrup}" -i *.[ch] 
+

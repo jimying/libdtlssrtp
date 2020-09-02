@@ -17,7 +17,7 @@
 
 PCH = dtls_srtp.h
 RANLIB = ranlib
-CFLAGS = -Wall -Wextra -fPIC -fpic -O3
+CFLAGS = -Wall -Wextra -fPIC -fpic -g
 INCLUDE =
 SYSROOT =
 LIBPATH =
@@ -44,4 +44,4 @@ $(PCH).gch: $(PCH)
 	$(CC) $(CFLAGS) $(INCLUDE) $(SYSROOT) -o $@ $<
 
 clean:
-	-rm *.o $(TGLIB) $(TEST)
+	-rm  -f *.o *.gch $(TGLIB) $(TEST)

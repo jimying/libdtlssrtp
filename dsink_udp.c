@@ -15,34 +15,24 @@
    License along with the DTLS-SRTP library; if not, see
    <http://www.gnu.org/licenses/>.  */
 
+#include "dsink_udp.h"
+#include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <netinet/in.h>
-#include "dsink_udp.h"
 /*
  * An exemplative data sink implemented directory atop sendto(2),
  * with no scheduling ability.
  */
 static DSINK_SENDTO(udp_sendto)
 {
-  return sendto(
-		(fd_t)carrier,
-		data,
-		datalen,
-		flags,
-		(const struct sockaddr*)target,
-		(socklen_t)tglen
-		);
+    return sendto((fd_t)carrier, data, datalen, flags,
+                  (const struct sockaddr *)target, (socklen_t)tglen);
 }
 
 static const dsink dsink_udp = {
-  "dsink_udp",
-  udp_sendto,
-  NULL,
+    "dsink_udp",
+    udp_sendto,
+    NULL,
 };
 
-const dsink* dsink_udp_getsink(void)
-{
-  return &dsink_udp;
-}
-
+const dsink *dsink_udp_getsink(void) { return &dsink_udp; }
