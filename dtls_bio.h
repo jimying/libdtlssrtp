@@ -1,6 +1,6 @@
 #ifndef DTLS_BIO_H_
 #define DTLS_BIO_H_
-
+#include <openssl/bio.h>
 // OpenSSL BIO writes packets
 
 // bio write callback

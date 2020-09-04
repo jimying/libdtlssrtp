@@ -236,7 +236,7 @@ ptrdiff_t dtls_sess_put_packet(dtls_sess *sess, void *carrier, const void *buf,
                                size_t len, const void *dest, int destlen)
 {
     ptrdiff_t ret = 0;
-    char dummy[len];
+    char dummy[1500];
 
     if (sess->ssl == NULL) {
         return -1;
@@ -261,7 +261,7 @@ ptrdiff_t dtls_sess_put_packet(dtls_sess *sess, void *carrier, const void *buf,
 #endif
 
     BIO_write(rbio, buf, len);
-    ret = SSL_read(sess->ssl, dummy, len);
+    ret = SSL_read(sess->ssl, dummy, sizeof(dummy));
 
     if ((ret < 0) && SSL_get_error(sess->ssl, ret) == SSL_ERROR_SSL) {
         return ret;
