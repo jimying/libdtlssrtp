@@ -314,7 +314,11 @@ ptrdiff_t dtls_sess_handle_timeout(dtls_sess *sess, void *carrier,
     if (!SSL_is_init_finished(sess->ssl)) {
         DTLSv1_handle_timeout(sess->ssl);
     }
+#ifndef USE_CUSTOM_BIO
     return dtls_sess_send_pending(sess, carrier, dest, destlen);
+#else
+    return 0;
+#endif
 }
 
 void dtls_sess_setup(dtls_sess *sess)
