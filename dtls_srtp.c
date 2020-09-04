@@ -16,6 +16,47 @@
    <http://www.gnu.org/licenses/>.  */
 
 #include "dtls_srtp.h"
+#include "dtls_bio.h"
+#include <stdlib.h>
+#include <string.h>
+
+#define USE_CUSTOM_BIO
+
+static dtls_sess_send_callback_t cb_send_data = NULL;
+
+static int dtls_bio_agent_write_callback(void *ctx, const char *data, int len)
+{
+    (void)data;
+    (void)len;
+    if (!ctx)
+        return -1;
+    if (!cb_send_data)
+        return -2;
+    return cb_send_data((dtls_sess *)ctx, data, len);
+}
+
+void dtls_set_send_callback(dtls_sess_send_callback_t cb) { cb_send_data = cb; }
+
+int dtls_init_openssl(void)
+{
+    int ret = 0;
+    OpenSSL_add_ssl_algorithms();
+    SSL_load_error_strings();
+    ret = SSL_library_init();
+#ifdef USE_CUSTOM_BIO
+    dtls_bio_agent_init(dtls_bio_agent_write_callback);
+#endif
+    return ret;
+}
+
+void dtls_uninit_openssl(void)
+{
+#ifdef USE_CUSTOM_BIO
+    dtls_bio_agent_destroy();
+#endif
+    ERR_free_strings();
+    EVP_cleanup();
+}
 
 SSL_VERIFY_CB(dtls_trivial_verify_callback)
 {
@@ -24,7 +65,8 @@ SSL_VERIFY_CB(dtls_trivial_verify_callback)
     (void)ctx;
     int err = X509_STORE_CTX_get_error(ctx);
     if (X509_V_OK != err) {
-        fprintf(stderr, "## verifiy fail....err:%d, %s\n", err, X509_verify_cert_error_string(err));
+        fprintf(stderr, "## verifiy fail....err:%d, %s\n", err,
+                X509_verify_cert_error_string(err));
     }
 
     return 1;
@@ -118,7 +160,11 @@ dtls_sess *dtls_sess_new(SSL_CTX *sslcfg, const dsink *sink, int con_state)
 
     BIO_set_mem_eof_return(rbio, -1);
 
+#ifndef USE_CUSTOM_BIO
     if (NULL == (wbio = BIO_new(BIO_s_mem()))) {
+#else
+    if (NULL == (wbio = dtls_bio_agent_new(sess))) {
+#endif
         BIO_free(rbio);
         rbio = NULL;
         goto error;
@@ -206,7 +252,13 @@ ptrdiff_t dtls_sess_put_packet(dtls_sess *sess, void *carrier, const void *buf,
         SSL_set_accept_state(sess->ssl);
     }
 
+#ifndef USE_CUSTOM_BIO
     dtls_sess_send_pending(sess, carrier, dest, destlen);
+#else
+    (void)carrier;
+    (void)dest;
+    (void)destlen;
+#endif
 
     BIO_write(rbio, buf, len);
     ret = SSL_read(sess->ssl, dummy, len);
@@ -215,7 +267,9 @@ ptrdiff_t dtls_sess_put_packet(dtls_sess *sess, void *carrier, const void *buf,
         return ret;
     }
 
+#ifndef USE_CUSTOM_BIO
     dtls_sess_send_pending(sess, carrier, dest, destlen);
+#endif
 
     if (SSL_is_init_finished(sess->ssl)) {
         sess->type = DTLS_CONTYPE_EXISTING;
@@ -227,6 +281,7 @@ ptrdiff_t dtls_sess_put_packet(dtls_sess *sess, void *carrier, const void *buf,
 ptrdiff_t dtls_do_handshake(dtls_sess *sess, void *carrier, const void *dest,
                             int destlen)
 {
+    ptrdiff_t ret = 0;
     /* If we are not acting as a client connecting to the remote side then
      * don't start the handshake as it will accomplish nothing and would
      * conflict with the handshake we receive from the remote side.
@@ -240,9 +295,16 @@ ptrdiff_t dtls_do_handshake(dtls_sess *sess, void *carrier, const void *dest,
         dtls_sess_set_state(sess, DTLS_CONSTATE_ACT);
     }
     SSL_do_handshake(sess->ssl);
+
+#ifndef USE_CUSTOM_BIO
     pthread_mutex_lock(&sess->lock);
     ptrdiff_t ret = dtls_sess_send_pending(sess, carrier, dest, destlen);
     pthread_mutex_unlock(&sess->lock);
+#else
+    (void)carrier;
+    (void)dest;
+    (void)destlen;
+#endif
     return ret;
 }
 

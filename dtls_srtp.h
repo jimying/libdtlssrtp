@@ -43,10 +43,10 @@ enum dtls_verify_mode {
 };
 
 enum dtls_con_state {
-    DTLS_CONSTATE_ACT,     // Endpoint is willing to inititate connections.
-    DTLS_CONSTATE_PASS,    // Endpoint is willing to accept connections.
-    DTLS_CONSTATE_ACTPASS, // Endpoint is willing to both accept and initiate
-                           // connections
+    DTLS_CONSTATE_ACT,      // Endpoint is willing to inititate connections.
+    DTLS_CONSTATE_PASS,     // Endpoint is willing to accept connections.
+    DTLS_CONSTATE_ACTPASS,  // Endpoint is willing to both accept and initiate
+                            // connections
     DTLS_CONSTATE_HOLDCONN, // Endpoint does not want the connection to be
                             // established right now
 };
@@ -280,12 +280,12 @@ typedef struct srtp_protection_profile {
 /*
  * get selected srtp profile
  */
-static inline srtp_protection_profile *srtp_get_selected_srtp_profile(dtls_sess *sess)
+static inline srtp_protection_profile *
+srtp_get_selected_srtp_profile(dtls_sess *sess)
 {
     SRTP_PROTECTION_PROFILE *profile = SSL_get_selected_srtp_profile(sess->ssl);
     return (srtp_protection_profile *)profile;
 }
-
 
 /*
  * Extract raw srtp key material from a dtls_sess object. Use
@@ -328,18 +328,13 @@ static inline const char *str_nullforempty(const char *str)
 }
 
 // init and uninit openssl library.
-static inline int dtls_init_openssl(void)
-{
-    OpenSSL_add_ssl_algorithms();
-    SSL_load_error_strings();
-    return SSL_library_init();
-}
+int dtls_init_openssl(void);
+void dtls_uninit_openssl(void);
 
-static inline void dtls_uninit_openssl(void)
-{
-    ERR_free_strings();
-    EVP_cleanup();
-}
+// set data send callback
+typedef int (*dtls_sess_send_callback_t)(dtls_sess *dtls, const char *data,
+                                         int len);
+void dtls_set_send_callback(dtls_sess_send_callback_t cb);
 
 #ifdef __cplusplus
 }

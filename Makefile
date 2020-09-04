@@ -18,9 +18,9 @@
 PCH = dtls_srtp.h
 RANLIB = ranlib
 CFLAGS = -Wall -Wextra -fPIC -fpic -g
-INCLUDE =
+INCLUDE = -I/opt/openssl/include
 SYSROOT =
-LIBPATH =
+LIBPATH = -Wl,-rpath=/opt/openssl/lib -L/opt/openssl/lib
 LIBS = -lcrypto -lssl
 TGLIB = libdtlssrtp.a
 TEST = dtlssrtp_example
@@ -33,7 +33,7 @@ test: $(TEST)
 $(TEST): example.o dsink_udp.o $(TGLIB)
 	$(CC) -o $(TEST) $^ $(LIBPATH) $(LIBS)
 
-$(TGLIB): dtls_srtp.o
+$(TGLIB): dtls_srtp.o dtls_bio.o
 	$(AR) cr $@ $^
 	$(RANLIB) $@
 

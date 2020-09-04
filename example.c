@@ -20,6 +20,7 @@
 #include <arpa/inet.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/select.h>
 #include <unistd.h>
 
@@ -67,7 +68,7 @@ const int on = 1, off = 0;
 static int exitflag = 0;
 
 // default timeout interval.
-static const struct timeval timeout = {5, 0};
+static const struct timeval timeout = {0, 100000};
 
 // callback used by signal(2)
 static void setexit(int sig)
@@ -182,6 +183,10 @@ typedef union usockaddr {
     struct sockaddr_in s4;
 } uaddr;
 
+void *g_carrier = NULL;
+const uaddr *g_remote_addr = NULL;
+socklen_t g_remote_addr_len = 0;
+
 /*
  * function to convert ip address represent with strings to
  * uaddr objects.
@@ -261,8 +266,17 @@ int mainloop(fd_t fd, SSL_CTX *cfg, const struct timeval *timeout,
              const int *toexit, const uaddr *peer)
 {
     int ret = EXIT_FAILURE;
+    bool bserver = (peer == NULL ? true : false);
+    g_carrier = (void *)fd;
+    g_remote_addr = peer;
+    if (peer) {
+        g_remote_addr_len = getsocklen(peer);
+    }
+
     // the side without a valid peer is considered the passive side.
-    dtls_sess *dtls = dtls_sess_new(cfg, dsink_udp_getsink(), (peer == NULL));
+    dtls_sess *dtls =
+        dtls_sess_new(cfg, dsink_udp_getsink(),
+                      bserver ? DTLS_CONSTATE_PASS : DTLS_CONSTATE_ACT);
 
     dtls_do_handshake(dtls, (void *)fd, (const void *)peer, getsocklen(peer));
 
@@ -297,6 +311,8 @@ int mainloop(fd_t fd, SSL_CTX *cfg, const struct timeval *timeout,
                 // packet received error!
                 break;
             }
+            g_remote_addr = &l_peer;
+            g_remote_addr_len = l_peerlen;
             if (packet_is_dtls(payload, len)) {
                 len = dtls_sess_put_packet(dtls, (void *)fd, payload, len,
                                            (const void *)&l_peer, l_peerlen);
@@ -310,9 +326,11 @@ int mainloop(fd_t fd, SSL_CTX *cfg, const struct timeval *timeout,
                 }
                 if (dtls->type == DTLS_CONTYPE_EXISTING) {
                     // dump selected srtp protection profile
-                    srtp_protection_profile *profile = srtp_get_selected_srtp_profile(dtls);
+                    srtp_protection_profile *profile =
+                        srtp_get_selected_srtp_profile(dtls);
                     if (!profile) {
-                        fprintf(stderr, "can not get srtp selected profile.......\n");
+                        fprintf(stderr,
+                                "can not get srtp selected profile.......\n");
                         if (peer == NULL) {
                             // demo works as server.
                             dtls_sess_setup(dtls);
@@ -322,7 +340,10 @@ int mainloop(fd_t fd, SSL_CTX *cfg, const struct timeval *timeout,
                             break;
                         }
                     }
-                    fprintf(stderr, "srtp selected protection profile, name:%s, id:%ld\n", profile->name, profile->id);
+                    fprintf(
+                        stderr,
+                        "srtp selected protection profile, name:%s, id:%ld\n",
+                        profile->name, profile->id);
 
                     // SSL_is_init_finished(), print key material.
                     {
@@ -368,11 +389,21 @@ int mainloop(fd_t fd, SSL_CTX *cfg, const struct timeval *timeout,
         }
         else {
             // no packet arrived, selected() returns for timeout.
+            if (g_remote_addr)
+                dtls_sess_handle_timeout(dtls, (void *)fd, g_remote_addr,
+                                         g_remote_addr_len);
             continue;
         }
     }
     dtls_sess_free(dtls);
     return ret;
+}
+
+int data_send_callback(dtls_sess *dtls, const char *data, int len)
+{
+    fprintf(stderr, "data_send_callback.. len:%d\n", len);
+    return dtls->sink->sendto(g_carrier, data, len, 0, g_remote_addr,
+                              g_remote_addr_len);
 }
 
 int main(int argc, char **argv)
@@ -382,6 +413,9 @@ int main(int argc, char **argv)
         fputs("Openssl initialization failed! quitting.\n", stderr);
         return EXIT_FAILURE;
     }
+
+    dtls_set_send_callback(data_send_callback);
+
     int ret = EXIT_FAILURE;
     if (argc <= 1) {
         fprintf(stderr, usage_format, argv[0]);
