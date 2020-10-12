@@ -142,6 +142,27 @@ SSL_CTX *dtls_ctx_init(int verify_mode, ssl_verify_cb *cb, const tlscfg *cfg)
     return ctx;
 }
 
+void dtls_info_callback (const SSL *ssl, int type, int val)
+{
+    (void)ssl;
+    (void)val;
+    //void *usrctx = SSL_get_ex_data(ssl, 0);
+
+    //printf("############ info callback, type:%d, \n", type);
+    if(type & SSL_CB_HANDSHAKE_START)
+    {
+        printf("info callback, SSL_CB_HANDSHARK_START\n");
+    }
+    else if(type & SSL_CB_HANDSHAKE_DONE)
+    {
+        printf("info callback, SSL_CB_HANDSHARK_DONE\n");
+    }
+    else if(type & SSL_CB_ALERT)
+    {
+        printf("info callback, SSL_CB_ALERT\n");
+    }
+}
+
 dtls_sess *dtls_sess_new(SSL_CTX *sslcfg, const dsink *sink, int con_state)
 {
     dtls_sess *sess = (dtls_sess *)calloc(1, sizeof(dtls_sess));
@@ -188,6 +209,13 @@ dtls_sess *dtls_sess_new(SSL_CTX *sslcfg, const dsink *sink, int con_state)
 
     pthread_mutex_init(&sess->lock, NULL);
     dtls_sess_set_sink(sess, sink);
+
+#if 1
+    /* set ssl info callback */
+    SSL_set_ex_data(sess->ssl, 0, sess);
+    SSL_set_info_callback(sess->ssl, dtls_info_callback);
+#endif
+
     return sess;
 
 error:
