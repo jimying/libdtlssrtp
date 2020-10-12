@@ -159,7 +159,9 @@ void dtls_info_callback (const SSL *ssl, int type, int val)
     }
     else if(type & SSL_CB_ALERT)
     {
-        printf("info callback, SSL_CB_ALERT\n");
+        printf("info callback, SSL_CB_ALERT, %s:%s:%s\n", (type & SSL_CB_READ)?"read":"write",
+                    SSL_alert_type_string_long(val),
+                    SSL_alert_desc_string_long(val));
     }
 }
 
